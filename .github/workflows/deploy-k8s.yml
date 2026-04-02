@@ -66,7 +66,7 @@ jobs:
           cp ../inventory.ini kubespray/inventory/mycluster/hosts.ini
           cd kubespray
           source venv/bin/activate
-          ansible-playbook -i ../inventory.ini \
+          ansible-playbook -i inventory/mycluster/hosts.ini \
             cluster.yml \
             -b -v \
             --user ubuntu
