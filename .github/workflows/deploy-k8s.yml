@@ -55,18 +55,22 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt
 
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Run Kubespray playbook
         run: |
-          # Запускаем ssh-agent и добавляем ключ из секрета
-          eval $(ssh-agent -s)
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add -
-          
+          mkdir -p kubespray/inventory/mycluster
+          cp ../inventory.ini kubespray/inventory/mycluster/hosts.ini
           cd kubespray
           source venv/bin/activate
           ansible-playbook -i ../inventory.ini \
             cluster.yml \
             -b -v \
             --user ubuntu
+
       - name: Install kubectl
         run: |
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
@@ -76,6 +80,7 @@ jobs:
       - name: Install Helm
         run: |
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
       - name: Find and copy kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -96,8 +101,7 @@ jobs:
       
       - name: Verify cluster access
         run: kubectl get nodes
-            
-      
+
       - name: Get kubeconfig from Kubespray artifacts
         run: |
             mkdir -p ~/.kube
