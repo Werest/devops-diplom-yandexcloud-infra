@@ -99,9 +99,9 @@ jobs:
             
       
       - name: Get kubeconfig from Kubespray artifacts
-              run: |
-                mkdir -p ~/.kube
-                cp kubespray/inventory/mycluster/artifacts/admin.conf ~/.kube/config
+        run: |
+            mkdir -p ~/.kube
+            cp kubespray/inventory/mycluster/artifacts/admin.conf ~/.kube/config
       
       - name: Verify cluster access
         run: kubectl get nodes
