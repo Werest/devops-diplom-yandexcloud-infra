@@ -1,0 +1,66 @@
+name: Deploy Kubernetes with Kubespray
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  TF_VAR_token: ${{ secrets.YC_TOKEN }}
+  TF_VAR_yc_cloud_id: ${{ secrets.YC_CLOUD_ID }}
+  TF_VAR_yc_folder_id: ${{ secrets.YC_FOLDER_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+      TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.5
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply (create infrastructure)
+        run: terraform apply -auto-approve
+
+      - name: Show inventory file
+        run: cat inventory.ini
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Clone Kubespray
+        run: |
+          if [ ! -d "kubespray" ]; then
+            git clone https://github.com/kubernetes-sigs/kubespray.git
+          fi
+
+      - name: Install Ansible dependencies
+        run: |
+          cd kubespray
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run Kubespray playbook
+        run: |
+          # Запускаем ssh-agent и добавляем ключ из секрета
+          eval $(ssh-agent -s)
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add -
+          
+          cd kubespray
+          source venv/bin/activate
+          ansible-playbook -i ../terraform/inventory.ini \
+            cluster.yml \
+            -b -v \
+            --user ubuntu
