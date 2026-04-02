@@ -76,12 +76,33 @@ jobs:
       - name: Install Helm
         run: |
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      - name: Get kubeconfig from Kubespray artifacts
+      - name: Find and copy kubeconfig
         run: |
           mkdir -p ~/.kube
-          cp kubespray/inventory/mycluster/artifacts/admin.conf ~/.kube/config
-
+          ADMIN_CONF=$(find kubespray -name "admin.conf" -type f | head -n1)
+          if [ -z "$ADMIN_CONF" ]; then
+            echo "admin.conf not found"
+            exit 1
+          fi
+          cp "$ADMIN_CONF" ~/.kube/config
+      
+      - name: Fix kubeconfig server address
+        run: |
+          # Получаем публичный IP мастер-ноды из output Terraform
+          MASTER_IP=$(terraform output -raw master_ip)
+          sed -i "s/127.0.0.1/$MASTER_IP/g" ~/.kube/config
+          sed -i "s/10\.[0-9.]\+/$MASTER_IP/g" ~/.kube/config
+          kubectl cluster-info  # проверка
+      
+      - name: Verify cluster access
+        run: kubectl get nodes
+            
+      
+      - name: Get kubeconfig from Kubespray artifacts
+              run: |
+                mkdir -p ~/.kube
+                cp kubespray/inventory/mycluster/artifacts/admin.conf ~/.kube/config
+      
       - name: Verify cluster access
         run: kubectl get nodes
 
