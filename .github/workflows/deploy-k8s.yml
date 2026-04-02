@@ -63,7 +63,7 @@ jobs:
           
           cd kubespray
           source venv/bin/activate
-          ansible-playbook -i ../terraform/inventory.ini \
+          ansible-playbook -i ../inventory.ini \
             cluster.yml \
             -b -v \
             --user ubuntu
