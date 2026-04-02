@@ -65,9 +65,7 @@ jobs:
           MASTER_IP=$(terraform output -raw master_ip)
           cd kubespray
           source venv/bin/activate
-          ansible-playbook -i ../inventory.ini cluster.yml -b --user ubuntu \
-          --forks=20 \
-          --extra-vars "apiserver_cert_extra_sans=['$MASTER_IP']"
+          ansible-playbook -i ../inventory.ini cluster.yml -b --user ubuntu
 
       - name: Install kubectl
         run: |
@@ -78,6 +76,18 @@ jobs:
       - name: Fetch kubeconfig from master node
         run: |
           MASTER_IP=$(terraform output -raw master_ip)
+          ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP << 'EOF'
+            # Создаём конфиг kubeadm с дополнительным SAN
+            sudo kubeadm config view > /tmp/kubeadm-config.yaml
+            # Добавляем публичный IP в certSANs (если ещё нет)
+            if ! grep -q "$MASTER_IP" /tmp/kubeadm-config.yaml; then
+              sudo sed -i "/certSANs:/a \    - $MASTER_IP" /tmp/kubeadm-config.yaml
+            fi
+            # Перегенерируем сертификат apiserver
+            sudo mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
+            sudo mv /etc/kubernetes/pki/apiserver.key /etc/kubernetes/pki/apiserver.key.bak
+            sudo kubeadm init phase certs apiserver --config=/tmp/kubeadm-config.yaml
+          EOF
           echo $MASTER_IP
           mkdir -p ~/.kube
           ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP "sudo cat /etc/kubernetes/admin.conf" > ~/.kube/config
