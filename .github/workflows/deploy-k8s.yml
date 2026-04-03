@@ -85,7 +85,7 @@ jobs:
             kubectl -n kube-system get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > /tmp/kubeadm-config.yaml
             # Добавляем публичный IP в certSANs (если ещё нет)
             if ! grep -q "$MASTER_IP" /tmp/kubeadm-config.yaml; then
-              sudo sed -i "/certSANs:/a \    - $MASTER_IP" /tmp/kubeadm-config.yaml
+              sudo sed -i "/certSANs:/a \  - $MASTER_IP" /tmp/kubeadm-config.yaml
             fi
             # Перегенерируем сертификат apiserver
             sudo mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
