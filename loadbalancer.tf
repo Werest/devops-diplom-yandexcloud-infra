@@ -17,7 +17,7 @@ resource "yandex_lb_network_load_balancer" "lb-grafana" {
 
   listener {
     name        = "grafana-listener"
-    port        = 3100
+    port        = 80
     target_port = 31000
     protocol    = "tcp"
     external_address_spec {
