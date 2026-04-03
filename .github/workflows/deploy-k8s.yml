@@ -85,7 +85,7 @@ jobs:
             # Set the correct kubeconfig
             mkdir -p ~/.kube
             sudo cp /etc/kubernetes/admin.conf ~/.kube/config
-            sudo chown $(id -u):$(id -g) ~/.kube/config            
+            sudo chown ubuntu:ubuntu ~/.kube/config            
             kubectl -n kube-system get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > /tmp/kubeadm-config.yaml
             # Добавляем публичный IP в certSANs (если ещё нет)
             if ! yq eval ".apiServer.certSANs // [] | contains([\"$MASTER_IP\"])" /tmp/kubeadm-config.yaml | grep -q true; then
