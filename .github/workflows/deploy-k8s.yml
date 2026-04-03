@@ -76,10 +76,10 @@ jobs:
 
       - name: Fetch kubeconfig from master node
         run: |
-          sudo snap install yq
           MASTER_IP=$(terraform output -raw master_ip)
           echo $MASTER_IP
           ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP << 'EOF'
+            sudo snap install yq
             # Set the correct kubeconfig
             mkdir -p ~/.kube
             sudo cp /etc/kubernetes/admin.conf ~/.kube/config
