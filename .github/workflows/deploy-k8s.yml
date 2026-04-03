@@ -76,6 +76,7 @@ jobs:
 
       - name: Fetch kubeconfig from master node
         run: |
+          sudo snap install yq
           MASTER_IP=$(terraform output -raw master_ip)
           echo $MASTER_IP
           ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP << 'EOF'
@@ -85,8 +86,11 @@ jobs:
             sudo chown $(id -u):$(id -g) ~/.kube/config            
             kubectl -n kube-system get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > /tmp/kubeadm-config.yaml
             # Добавляем публичный IP в certSANs (если ещё нет)
-            if ! grep -q "^  - $MASTER_IP$" /tmp/kubeadm-config.yaml; then
-              sudo sed -i "/certSANs:/a \  - $MASTER_IP" /tmp/kubeadm-config.yaml
+            if ! yq eval ".apiServer.certSANs // [] | contains([\"$MASTER_IP\"])" /tmp/kubeadm-config.yaml | grep -q true; then
+                yq eval ".apiServer.certSANs += [\"$MASTER_IP\"]" -i /tmp/kubeadm-config.yaml
+                echo "IP $MASTER_IP добавлен в certSANs"
+            else
+                echo "IP $MASTER_IP уже присутствует"
             fi
             cat /tmp/kubeadm-config.yaml
             # Перегенерируем сертификат apiserver
