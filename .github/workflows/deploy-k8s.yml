@@ -65,7 +65,8 @@ jobs:
           MASTER_IP=$(terraform output -raw master_ip)
           cd kubespray
           source venv/bin/activate
-          ansible-playbook -i ../inventory.ini cluster.yml -b --user ubuntu
+          ansible-playbook -i ../inventory.ini cluster.yml -b --user ubuntu \
+          --extra-vars "{\"apiserver_cert_extra_sans\":[\"$MASTER_IP\"]}"
 
       - name: Install kubectl
         run: |
