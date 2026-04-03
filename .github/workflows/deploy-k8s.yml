@@ -79,7 +79,8 @@ jobs:
           MASTER_IP=$(terraform output -raw master_ip)
           echo $MASTER_IP
           ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP << 'EOF'
-            sudo snap install yq
+            sudo apt update
+            sudo apt install yq -y
             # Set the correct kubeconfig
             mkdir -p ~/.kube
             sudo cp /etc/kubernetes/admin.conf ~/.kube/config
