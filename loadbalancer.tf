@@ -72,9 +72,9 @@ resource "yandex_lb_network_load_balancer" "lb-webapp" {
 }
 
 output "lb_grafana_ip" {
-  value = yandex_lb_network_load_balancer.lb-grafana.listener[0].external_address_spec[0].address
+  value = yandex_lb_network_load_balancer.lb-grafana.listener.*.external_address_spec[0].*.address
 }
 
 output "lb_webapp_ip" {
-  value = yandex_lb_network_load_balancer.lb-webapp.listener[0].external_address_spec[0].address
+  value = yandex_lb_network_load_balancer.lb-webapp.listener.*.external_address_spec[0].*.address
 }
