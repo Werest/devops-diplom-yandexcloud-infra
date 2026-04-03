@@ -46,6 +46,26 @@ resource "yandex_vpc_security_group" "k8s_sg" {
     }
   }
 
+  dynamic "ingress" {
+    for_each = var.allowed_api_cidrs
+    content {
+      protocol       = "TCP"
+      port           = 31000
+      v4_cidr_blocks = [ingress.value]
+      description    = "Grafana"
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = var.allowed_api_cidrs
+    content {
+      protocol       = "TCP"
+      port           = 32000
+      v4_cidr_blocks = [ingress.value]
+      description    = "WebApp"
+    }
+  }
+
   egress {
     protocol       = "ANY"
     v4_cidr_blocks = ["0.0.0.0/0"]

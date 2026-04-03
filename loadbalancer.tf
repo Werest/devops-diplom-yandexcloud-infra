@@ -1,3 +1,30 @@
+# Группа безопасности для балансировщика
+resource "yandex_vpc_security_group" "lb-sg" {
+  name        = "lb-sg"
+
+  ingress {
+    protocol       = "TCP"
+    description    = "HTTP"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+    port           = 80
+  }
+
+  ingress {
+    protocol       = "TCP"
+    description    = "Порт 3100"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+    port           = 3100
+  }
+
+  egress {
+    protocol       = "ANY"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+    from_port      = 0
+    to_port        = 65535
+  }
+  network_id = yandex_vpc_network.k8s_net.id
+}
+
 resource "yandex_lb_target_group" "lb-balancer-group" {
   name       = "lb-balancer-group"
   depends_on = [yandex_compute_instance.master]
@@ -11,13 +38,14 @@ resource "yandex_lb_target_group" "lb-balancer-group" {
   }
 }
 
-# Сетевой балансировщик с двумя слушателями
-resource "yandex_lb_network_load_balancer" "app-lb" {
-  name = "app-load-balancer"
+# LB Grafana
+resource "yandex_lb_network_load_balancer" "lb-grafana" {
+  name = "lb-grafana"
 
-  # Слушатель 1: внешний порт 3100 -> целевой порт 31000
+  security_group_ids = [yandex_vpc_security_group.lb-sg.id]
+
   listener {
-    name        = "grafana-3100"
+    name        = "grafana-listener"
     port        = 3100
     target_port = 31000
     protocol    = "tcp"
@@ -26,9 +54,30 @@ resource "yandex_lb_network_load_balancer" "app-lb" {
     }
   }
 
-  # Слушатель 2: внешний порт 80 -> целевой порт 32000
+  attached_target_group {
+    target_group_id = yandex_lb_target_group.lb-balancer-group.id
+
+    healthcheck {
+      name                = "healthcheck-grafana"
+      interval            = 2
+      timeout             = 1
+      unhealthy_threshold = 2
+      healthy_threshold   = 2
+      tcp_options {
+        port = 31000
+      }
+    }
+  }
+}
+
+# LB WEBAPP
+resource "yandex_lb_network_load_balancer" "lb-webapp" {
+  name = "lb-webapp"
+
+  security_group_ids = [yandex_vpc_security_group.lb-sg.id]
+
   listener {
-    name        = "web-app-80"
+    name        = "webapp-listener"
     port        = 80
     target_port = 32000
     protocol    = "tcp"
@@ -37,19 +86,26 @@ resource "yandex_lb_network_load_balancer" "app-lb" {
     }
   }
 
-  # Привязываем целевую группу с health check
   attached_target_group {
     target_group_id = yandex_lb_target_group.lb-balancer-group.id
 
     healthcheck {
-      name                = "tcp-health-check"
+      name                = "healthcheck-webapp"
       interval            = 2
       timeout             = 1
       unhealthy_threshold = 2
       healthy_threshold   = 2
       tcp_options {
-        port = 33000
+        port = 32000
       }
     }
   }
+}
+
+output "lb_grafana_ip" {
+  value = yandex_lb_network_load_balancer.lb-grafana.listener[0].external_address_spec[0].address
+}
+
+output "lb_webapp_ip" {
+  value = yandex_lb_network_load_balancer.lb-webapp.listener[0].external_address_spec[0].address
 }
