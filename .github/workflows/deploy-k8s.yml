@@ -42,18 +42,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Clone Kubespray
-        run: |
-          if [ ! -d "kubespray" ]; then
-            git clone https://github.com/kubernetes-sigs/kubespray.git
-          fi
+#      - name: Clone Kubespray
+#        run: |
+#          if [ ! -d "kubespray" ]; then
+#            git clone https://github.com/kubernetes-sigs/kubespray.git
+#          fi
 
-      - name: Install Ansible dependencies
-        run: |
-          cd kubespray
-          python3 -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
+#      - name: Install Ansible dependencies
+#        run: |
+#          cd kubespray
+#          python3 -m venv venv
+#          source venv/bin/activate
+#          pip install -r requirements.txt
 
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -94,7 +94,6 @@ jobs:
             else
                 echo "IP $MASTER_IP уже присутствует"
             fi
-            cat /tmp/kubeadm-config.yaml
             # Перегенерируем сертификат apiserver
             sudo mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
             sudo mv /etc/kubernetes/pki/apiserver.key /etc/kubernetes/pki/apiserver.key.bak
@@ -106,6 +105,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP "sudo cat /etc/kubernetes/admin.conf" > ~/.kube/config
           sed -i "s/127.0.0.1/$MASTER_IP/g" ~/.kube/config
           sed -i "s/10\.[0-9.]\+/$MASTER_IP/g" ~/.kube/config
+          cat ~/.kube/config
           kubectl get nodes
 
       - name: Install Helm
