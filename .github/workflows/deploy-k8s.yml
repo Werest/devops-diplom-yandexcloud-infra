@@ -78,6 +78,10 @@ jobs:
         run: |
           MASTER_IP=$(terraform output -raw master_ip)
           ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP << 'EOF'
+            # Set the correct kubeconfig
+            mkdir -p ~/.kube
+            sudo cp /etc/kubernetes/admin.conf ~/.kube/config
+            sudo chown $(id -u):$(id -g) ~/.kube/config            
             kubectl -n kube-system get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > /tmp/kubeadm-config.yaml
             # Добавляем публичный IP в certSANs (если ещё нет)
             if ! grep -q "$MASTER_IP" /tmp/kubeadm-config.yaml; then
