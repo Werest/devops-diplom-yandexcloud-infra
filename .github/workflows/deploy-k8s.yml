@@ -42,32 +42,31 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Clone Kubespray
-        run: |
-          if [ ! -d "kubespray" ]; then
-            git clone https://github.com/kubernetes-sigs/kubespray.git
-          fi
+#      - name: Clone Kubespray
+#        run: |
+#          if [ ! -d "kubespray" ]; then
+#            git clone https://github.com/kubernetes-sigs/kubespray.git
+#          fi
 
-      - name: Install Ansible dependencies
-        run: |
-          cd kubespray
-          python3 -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
+#      - name: Install Ansible dependencies
+#        run: |
+#          cd kubespray
+#          python3 -m venv venv
+#          source venv/bin/activate
+#          pip install -r requirements.txt
 
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Run Kubespray playbook
-        run: |
-          MASTER_IP=$(terraform output -raw master_ip)
-          cd kubespray
-          source venv/bin/activate
-          ansible-playbook -i ../inventory.ini cluster.yml -b --user ubuntu \
-          --forks=20 \
-          --extra-vars "apiserver_cert_extra_sans=['$MASTER_IP']"
+#      - name: Run Kubespray playbook
+#        run: |
+#          MASTER_IP=$(terraform output -raw master_ip)
+#          cd kubespray
+#          source venv/bin/activate
+#          ansible-playbook -i ../inventory.ini cluster.yml -b --user ubuntu \
+#          --extra-vars "{\"apiserver_cert_extra_sans\":[\"$MASTER_IP\"]}"
 
       - name: Install kubectl
         run: |
@@ -79,10 +78,34 @@ jobs:
         run: |
           MASTER_IP=$(terraform output -raw master_ip)
           echo $MASTER_IP
+          ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP << EOF
+            sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+            sudo chmod +x /usr/local/bin/yq
+            yq --version
+            # Set the correct kubeconfig
+            mkdir -p ~/.kube
+            sudo cp /etc/kubernetes/admin.conf ~/.kube/config
+            sudo chown ubuntu:ubuntu ~/.kube/config            
+            kubectl -n kube-system get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > /tmp/kubeadm-config.yaml
+            # Добавляем публичный IP в certSANs (если ещё нет)
+            if ! yq eval ".apiServer.certSANs // [] | contains([\"$MASTER_IP\"])" /tmp/kubeadm-config.yaml | grep -q true; then
+                yq eval ".apiServer.certSANs += [\"$MASTER_IP\"]" -i /tmp/kubeadm-config.yaml
+                echo "IP $MASTER_IP добавлен в certSANs"
+            else
+                echo "IP $MASTER_IP уже присутствует"
+            fi
+            # Перегенерируем сертификат apiserver
+            sudo mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
+            sudo mv /etc/kubernetes/pki/apiserver.key /etc/kubernetes/pki/apiserver.key.bak
+            sudo kubeadm init phase certs apiserver --config=/tmp/kubeadm-config.yaml
+            sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
+          EOF
+          echo $MASTER_IP
           mkdir -p ~/.kube
           ssh -o StrictHostKeyChecking=no ubuntu@$MASTER_IP "sudo cat /etc/kubernetes/admin.conf" > ~/.kube/config
           sed -i "s/127.0.0.1/$MASTER_IP/g" ~/.kube/config
           sed -i "s/10\.[0-9.]\+/$MASTER_IP/g" ~/.kube/config
+          cat ~/.kube/config
           kubectl get nodes
 
       - name: Install Helm
