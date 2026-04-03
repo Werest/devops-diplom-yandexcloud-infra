@@ -91,6 +91,7 @@ jobs:
             sudo mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
             sudo mv /etc/kubernetes/pki/apiserver.key /etc/kubernetes/pki/apiserver.key.bak
             sudo kubeadm init phase certs apiserver --config=/tmp/kubeadm-config.yaml
+            sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
           EOF
           echo $MASTER_IP
           mkdir -p ~/.kube
